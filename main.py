@@ -3,16 +3,16 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 
-import kagglehub
-
-path = kagglehub.dataset_download(
-    "stephanmatzka/predictive-maintenance-dataset-ai4i-2020"
-)
+from helpers.dataset import move_dataset
+from helpers.dataset import use_original_path
 
 
 def optimize_spare_parts(data_path):
     print("Wczytywanie i przygotowywanie danych...")
     # Wczytanie danych z pliku pobranego z Kaggle
+    if data_path is None:
+        ValueError("Dataset not defined, check if it moved properly")
+
     df = pd.read_csv(data_path)
 
     # Cechy wejściowe (sensory)
@@ -107,8 +107,8 @@ def optimize_spare_parts(data_path):
 
 
 def main() -> None:
-    print("Path to dataset files:", path)
-    optimize_spare_parts(data_path="ai4i2020.csv")
+    move_dataset()
+    optimize_spare_parts(data_path="helpers/dataset/ai4i2020.csv")
 
 
 if __name__ == "__main__":
