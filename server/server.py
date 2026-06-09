@@ -1,17 +1,19 @@
 import sys
 from pathlib import Path
+from fastapi.applications import FastAPI
+import joblib
+import pandas as pd
+from pydantic import BaseModel, Field
+import uvicorn
+
+from model import train_model
+from model.train_model import TARGET_COLUMNS
+from server.spare_parts import FailureMode, optimize_inventory
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from fastapi.applications import FastAPI
-import joblib
-import pandas as pd
-from pydantic import BaseModel
-import uvicorn
-
-from model import train_model
 
 app: FastAPI = FastAPI()
 
@@ -21,6 +23,7 @@ MODEL = joblib.load(MODEL_PATH)
 
 class Telemetry(BaseModel):
     machine_id: str
+    product_type: str = Field(default="M", pattern="^[LMHlmh]$")
     air_temp: float
     process_temp: float
     rotational_speed: int
@@ -30,35 +33,46 @@ class Telemetry(BaseModel):
 
 @app.post("/telemetry")
 async def receive_telemetry(data: Telemetry):
-    # Przygotowanie danych do formatu, który rozumie model
-    input_df = pd.DataFrame(
-        [
-            {
-                "Air temperature [K]": data.air_temp,
-                "Process temperature [K]": data.process_temp,
-                "Rotational speed [rpm]": data.rotational_speed,
-                "Torque [Nm]": data.torque,
-                "Tool wear [min]": data.tool_wear,
-            }
-        ]
-    )
+    input_df = build_model_input(data)
 
-    # Predykcja (multi-output)
     prediction_probs = MODEL.predict_proba(input_df)
+    predicted_modes = TARGET_COLUMNS[: len(prediction_probs)]
 
-    # Przykładowa logika dla TWF (Tool Wear Failure)
-    # prediction_probs[0] to zazwyczaj TWF w Twoim modelu
-    twf_risk = prediction_probs[0][0][1]
+    risks: dict[FailureMode, float] = {
+        FailureMode(failure_mode): float(prediction_probs[index][0][1])
+        for index, failure_mode in enumerate(predicted_modes)
+    }
 
-    response = {"status": "received", "twf_risk": round(twf_risk, 2), "action": "NONE"}
+    for failure_mode in TARGET_COLUMNS:
+        risks.setdefault(FailureMode(failure_mode), 0.0)
 
-    if twf_risk > 0.5:
-        # Logika biznesowa: zamówienie części i wymiana
-        response["action"] = "REPLACE_TOOL"
-        response["message"] = "Risk high! Ordering new tool and scheduling maintenance."
-        # Tutaj mógłbyś dodać wpis do bazy danych lub wysłać maila do UR
+    optimization = optimize_inventory(risks)
 
-    return response
+    return {
+        "status": "received",
+        "machine_id": data.machine_id,
+        "failure_risks": {
+            mode.value if hasattr(mode, "value") else mode: round(risk, 3)
+            for mode, risk in risks.items()
+        },
+        "action": optimization["overall_action"],
+        "inventory_optimization": optimization,
+    }
+
+
+def build_model_input(data: Telemetry) -> pd.DataFrame:
+    row = {
+        "Air temperature [K]": data.air_temp,
+        "Process temperature [K]": data.process_temp,
+        "Rotational speed [rpm]": data.rotational_speed,
+        "Torque [Nm]": data.torque,
+        "Tool wear [min]": data.tool_wear,
+    }
+
+    if hasattr(MODEL, "named_steps"):
+        row["Type"] = data.product_type.upper()
+
+    return pd.DataFrame([row])
 
 
 if __name__ == "__main__":

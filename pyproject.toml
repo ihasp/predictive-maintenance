@@ -1,7 +1,7 @@
 [project]
-name = "predictive-maintnance"
+name = "spare-parts-maintenance-optimization"
 version = "0.1.0"
-description = "Add your description here"
+description = "Decision support for spare-parts inventory optimization in maintenance."
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [

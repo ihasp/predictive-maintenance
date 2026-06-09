@@ -9,8 +9,9 @@ URL = "http://127.0.0.1:8000/telemetry"
 
 
 class MachineSimulator:
-    def __init__(self, machine_id) -> None:
+    def __init__(self, machine_id, product_type="M") -> None:
         self.machine_id = machine_id
+        self.product_type = product_type
         self.tool_wear = 0
         self.air_temp: float = 298.0
 
@@ -31,6 +32,7 @@ class MachineSimulator:
 
         return {
             "machine_id": self.machine_id,
+            "product_type": self.product_type,
             "air_temp": round(self.air_temp, 1),
             "process_temp": round(process_temp, 1),
             "rotational_speed": int(rotational_speed),
@@ -50,10 +52,9 @@ if __name__ == "__main__":
             response: Response = requests.post(URL, json=data)
             print(f"Dane wysłane: {data} | Odpowiedź API: {response.json()}")
 
-            # Jeśli API powie, że wymieniono część, resetujemy licznik w symulatorze
-            if response.json().get("action") == "REPLACE_TOOL":
+            if response.json().get("action") == "RESERVE_FROM_STOCK":
                 sim.reset_tool()
-                print("--- WYMIANA NARZĘDZIA ZAKOŃCZONA ---")
+                print("--- CZESC ZAREZERWOWANA, WYMIANA ZAPLANOWANA ---")
         except Exception as e:
             print(f"Błąd połączenia: {e}")
 
