@@ -21,7 +21,7 @@ def use_original_path() -> str:
 
 
 def move_dataset() -> None:
-    dataset_path = download_dataset()
+    dataset_path: str = download_dataset()
     source: str = dataset_path + "\\ai4i2020.csv"
 
     print(f"Original dataset path: {source}")
