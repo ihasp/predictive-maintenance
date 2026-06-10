@@ -1,3 +1,4 @@
+import json
 import random
 import time
 from typing import Any
@@ -50,12 +51,19 @@ if __name__ == "__main__":
         data: dict[str, Any] = sim.generate_data()
         try:
             response: Response = requests.post(URL, json=data)
-            print(f"Dane wysłane: {data} | Odpowiedź API: {response.json()}")
+            data_resp = response.json()
+            
+            print("\n" + "="*50)
+            print("Dane wysłane:")
+            print(json.dumps(data, indent=2))
+            print("Odpowiedź API:")
+            print(json.dumps(data_resp, indent=2))
 
-            if response.json().get("action") == "RESERVE_FROM_STOCK":
+            if data_resp.get("action") == "RESERVE_FROM_STOCK":
                 sim.reset_tool()
                 print("--- CZESC ZAREZERWOWANA, WYMIANA ZAPLANOWANA ---")
+                
         except Exception as e:
-            print(f"Błąd połączenia: {e}")
+            print(f"\nBłąd połączenia: {e}")
 
         time.sleep(1)  # Przesyłaj dane co sekundę

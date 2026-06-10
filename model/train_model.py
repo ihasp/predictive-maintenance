@@ -10,12 +10,10 @@ from sklearn.metrics import classification_report, fbeta_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
-from helpers.dataset import move_dataset
-
-
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
+
 
 DATASET_PATH = ROOT_DIR / "helpers" / "dataset" / "ai4i2020_normalized.csv"
 MODEL_PATH = ROOT_DIR / "model" / "maintenance_model.pkl"
